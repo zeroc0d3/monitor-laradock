@@ -1,0 +1,25 @@
+version: '3.2'
+
+services:
+
+#================================================================================================
+# GRAFANA
+#================================================================================================
+  grafana:
+    restart: always
+    build:
+      context: .
+    ports:
+      - "9100:3000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /data/grafana:/var/lib/grafana
+    environment:
+      - GRAFANA_VERSION=${GRAFANA_VERSION}
+      - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_INSTALL_PLUGINS=${GF_INSTALL_PLUGINS}
+      - GF_AWS_PROFILES=${GF_AWS_PROFILES}
+      - GF_AWS_default_ACCESS_KEY_ID=${GF_AWS_default_ACCESS_KEY_ID}
+      - GF_AWS_default_SECRET_ACCESS_KEY=${GF_AWS_default_SECRET_ACCESS_KEY}
+      - GF_AWS_default_REGION=${GF_AWS_default_REGION}

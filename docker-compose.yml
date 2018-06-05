@@ -1,0 +1,177 @@
+version: '3.2'
+
+networks:
+  monitor-net:
+    driver: bridge
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+services:
+
+#================================================================================================
+# PROMETHEUS
+#================================================================================================
+  prometheus:
+    image: prom/prometheus:v2.2.0-rc.0
+    container_name: zeroc0d3_prometheus
+    volumes:
+      - ./prometheus/alert.rules:/etc/prometheus/alert.rules
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./data/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    ports:
+      - "8108:9090"
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+#================================================================================================
+# ALERTMANAGER
+#================================================================================================
+  alertmanager:
+    image: prom/alertmanager:v0.14.0
+    container_name: zeroc0d3_alertmanager
+    volumes:
+      - ./alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped
+    ports:
+      - "8109:9093"
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+#================================================================================================
+# NODEEXPORTER
+#================================================================================================
+  nodeexporter:
+    image: prom/node-exporter:v0.15.2
+    container_name: zeroc0d3_nodeexporter
+    user: root
+    privileged: true
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    ports:
+      - "8110:9100"
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+#================================================================================================
+# CADVISOR
+#================================================================================================
+  cadvisor:
+    image: google/cadvisor:v0.28.3
+    container_name: zeroc0d3_cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+    restart: unless-stopped
+    ports:
+      - "8111:8080"
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+#================================================================================================
+# GRAFANA
+#================================================================================================
+  grafana:
+    build:
+      context: ./grafana/5.1.3
+    container_name: zeroc0d3_grafana
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/datasources
+      - ./grafana/dashboards:/etc/grafana/dashboards
+      - ./grafana/setup.sh:/setup.sh
+    entrypoint: /setup.sh
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    ports:
+      - "8112:3000"
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+#================================================================================================
+# PUSHGATEWAY
+#================================================================================================
+  pushgateway:
+    image: prom/pushgateway
+    container_name: zeroc0d3_pushgateway
+    restart: unless-stopped
+    ports:
+      - "8113:9091"
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+#================================================================================================
+# CADDY
+#================================================================================================
+  caddy:
+    image: stefanprodan/caddy
+    container_name: zeroc0d3_caddy
+    ports:
+      - "8114:3000"
+      - "8115:9090"
+      - "8116:9093"
+      - "8117:9091"
+    volumes:
+      - ./caddy/:/etc/caddy/
+    environment:
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+    restart: unless-stopped
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+#================================================================================================
+# PORTAINER
+#================================================================================================
+  portainer:
+    restart: unless-stopped
+    container_name: zeroc0d3_portainer
+    build:
+      context: ./portainer/1.16.5
+    ports:
+      - "8118:9000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data/portainer:/data                                      # volume for data
+    environment:
+      - PORTAINER_VERSION=1.16.5

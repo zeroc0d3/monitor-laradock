@@ -1,0 +1,19 @@
+version: '3.2'
+
+services:
+
+#================================================================================================
+# PORTAINER
+#================================================================================================
+  portainer:
+    restart: always
+    build:
+      context: .
+    ports:
+      - "${PORTAINER_PORT}:9000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DATA_PORTAINER}:/data                                      # volume for data
+    environment:
+      - PORTAINER_VERSION=${PORTAINER_VERSION}

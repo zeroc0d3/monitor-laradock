@@ -1,0 +1,25 @@
+version: '3.2'
+
+services:
+
+#================================================================================================
+# GRAFANA
+#================================================================================================
+  grafana:
+    restart: always
+    build:
+      context: .
+    ports:
+      - "9100:3000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /data/grafana:/var/lib/grafana
+    environment:
+      - GRAFANA_VERSION=5.1.3
+      - GF_SERVER_ROOT_URL=http://localhost:9100
+      - GF_SECURITY_ADMIN_PASSWORD=password
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel,alexanderzobnin-zabbix-app,crate-datasource,cloudflare-app,percona-percona-app,raintank-worldping-app
+      # - GF_AWS_PROFILES=default
+      # - GF_AWS_default_ACCESS_KEY_ID=YOUR_ACCESS_KEY
+      # - GF_AWS_default_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
+      # - GF_AWS_default_REGION=us-east-1
